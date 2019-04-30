@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <script src="https://canvasjs.com/assets/script/canvasjs.min.js"></script>
+                
+        <title>Arduino</title>
+    </head>
+    <body>
+        
+        <p>
+        Current temperature is:
+        <span id = "currTemp"></span>
+        </p>
+        <p>
+        Average temperature is:
+        <span id = "averageTemp"></span>
+        </p>
+        <p>
+        Low temperature is:
+        <span id = "lowTemp"></span>
+        </p>
+
+        <p>
+        High temperature is:
+        <span id = "highTemp"></span>
+        </p>
+
+        <!-- show the connectivity of Arduino-->
+        <p>
+        Status: 
+        <span id="err"></span>
+        </p>
+
+        <!-- current temperature unit-->
+        <p>
+        Current unit: 
+        <span id="unit">Celsius</span>
+        </p>
+
+        <tr>
+            <td><button id="buttonB" onclick="toBlue()">turn LED light Blue</button></td>
+            <td><button id="buttonF" onclick="toFa()">To Fahrenheit</button></td>
+            <td><button id="buttonC" onclick="toCe()">To Celsius</button></td>
+            <td><button id="buttonS" onclick="toStandBy()">Stand by mode</button></td>
+            <td><button id="buttonR" onclick="toResume()">Resume</button></td>
+      </tr>
+      
+        <script type="text/javascript">
+
+          var click = false; 
+          var curr = 0;
+          /*
+          once clicked, set unit to Fahrenheit
+          set flag to true
+          and send /toFa to server
+          */
+            function toFa () {
+                $("#unit").html("Fahrenheit");
+                click = true;
+                $.get("/toFa",function(data){});
+                } 
+
+		/*
+          once clicked, set unit to Celsius
+          set flag to false
+          and send /toCe to server
+          */
+            function toCe () {
+                $("#unit").html("Celsius");
+                  click = false;
+                  $.get("/toCe",function(data){});
+                } 
+
+			
+          /* once clicked send /blue to server */          
+            function toBlue(){
+              $.get("/blue",function(data){});
+            }   
+
+ 			/* once clicked send /sdby to server */
+            function toStandBy(){
+              $.get("/sdby",function(data){});
+            }
+
+ 			/* once clicked send /resu to server */
+            function toResume(){
+              $.get("/resu",function(data){});
+            }    
+
+            setInterval(getJson, 1000);
+            
+ 			/*  send /temp to server 
+ 				convert temp data to Fahrenheit if click == true
+ 				show error message if cannot get response from server
+ 			*/            
+            function getJson(){
+                $.get("/temp", (data) => {
+                      curr = parseFloat(data.currTemp);
+                      var average = data.averageTemp;
+                      var min = data.minTemp;
+                      var max = data.maxTemp;
+
+                      if(click){
+                        curr = curr * 1.8 + 32;
+                        average = average * 1.8 + 32;
+                        min = min * 1.8 + 32;
+                        max = max * 1.8 + 32;
+                      }
+
+                      $("#currTemp").html(curr);
+                      $("#averageTemp").html(average);
+                      $("#lowTemp").html(min);
+                      $("#highTemp").html(max);
+                                            
+                      $("#err").html("Connected");
+                      
+                      }).fail(() => {
+                          $("#err").html("Disconnected");
+                      });
+            }
+              /* external package used to draw graph*/
+            window.onload = function () {
+                
+              var dps = [];
+              var chart = new CanvasJS.Chart("chartContainer", {
+               title :{
+               text: "Dynamic Data"
+               },
+               axisY: {
+               includeZero: false
+               },
+               data: [{
+                      type: "line",
+                      dataPoints: dps
+                      }]
+               });
+               
+               var xVal = 0;
+               var yVal = 0;
+               console.log(curr);
+               var updateInterval = 1000;
+               var dataLength = 20; 
+               
+               var updateChart = function (count) {
+                   
+                   count = count || 1;
+                   
+                   for (var j = 0; j < count; j++) {
+                       yVal = curr;
+                       dps.push({
+                                x: xVal,
+                                y: yVal
+                                });
+                                xVal++;
+                   }
+                   
+                   if (dps.length > dataLength) {
+                       dps.shift();
+                   }
+                   
+                   chart.render();
+               };
+               
+               updateChart(dataLength);
+               setInterval(function(){updateChart()}, updateInterval);
+                                               
+            }
+        </script>       
+        <div id="chartContainer" style="height: 370px; max-width: 920px; margin: 0px auto;"></div>
+        
+    </body>
+</html>
